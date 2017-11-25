@@ -5,7 +5,7 @@ import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
 
 
-public class Modelo {
+class Modelo {
     public static Modelo instance = null;
     private ListProperty<Estrella> estrellas;
 
@@ -36,4 +36,11 @@ public class Modelo {
         return estrellas;
     }
 
+    public void add(Estrella estrella) {
+        estrellas.add(estrella);
+    }
+
+    public void editar(Estrella estrella) {
+        // no hacemos nada porque no aún no es persistente
+    }
 }
