@@ -82,4 +82,17 @@ public class Estrella {
     public void setY(double y) {
         this.y.setValue(y);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Estrella estrella = (Estrella) o;
+
+        if (nombre != null ? !nombre.equals(estrella.nombre) : estrella.nombre != null) return false;
+        if (x != null ? !x.equals(estrella.x) : estrella.x != null) return false;
+        return y != null ? y.equals(estrella.y) : estrella.y == null;
+    }
+
 }
