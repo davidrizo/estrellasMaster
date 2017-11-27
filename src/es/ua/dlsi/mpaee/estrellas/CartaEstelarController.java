@@ -6,6 +6,7 @@ import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
@@ -34,6 +35,7 @@ public class CartaEstelarController {
      * Lo usaremos más adelante con el patrón Comando
      */
     Estrella estrellaOriginal;
+    private TextField elementoInsertando;
 
 
     public CartaEstelarController(Modelo modelo) {
@@ -92,7 +94,7 @@ public class CartaEstelarController {
         pane.setOnMouseClicked(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event) {
-                lanzarEvento(new EventoClicked(null, event.isAltDown(), event.getClickCount()==2));
+                lanzarEvento(new EventoClicked(null, event.isAltDown(), event.getClickCount()==2, event.getX(), event.getY()));
             }
         });
 
@@ -106,7 +108,7 @@ public class CartaEstelarController {
 
     }
 
-    private void addEstrella(Estrella estrella) {
+    private Text addEstrella(Estrella estrella) {
         Text text = new Text();
         text.setUserData(estrella);
         text.textProperty().bind(estrella.nombreProperty());
@@ -131,7 +133,7 @@ public class CartaEstelarController {
         text.setOnMouseClicked(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event) {
-                lanzarEvento(new EventoClicked(text, event.isAltDown(), event.getClickCount() == 2));
+                lanzarEvento(new EventoClicked(text, event.isAltDown(), event.getClickCount() == 2, event.getX(), event.getY()));
                 event.consume(); // para que no pase el evento también al panel
             }
         });
@@ -142,6 +144,7 @@ public class CartaEstelarController {
                 event.consume();
             }
         });
+        return text;
     }
 
     public void show() {
@@ -159,6 +162,7 @@ public class CartaEstelarController {
                 modelo.seleccionar((Estrella)elementoSeleccionado.getUserData());
                 break;
             case insertando:
+
                 break;
             case editando:
                 estrellaOriginal = new Estrella((Estrella) elementoSeleccionado.getUserData());
@@ -178,8 +182,11 @@ public class CartaEstelarController {
                     highlight(evento.getElemento(), SELECTED);
                     elementoSeleccionado = evento.getElemento();
                     cambiaEstado(EstadoCRUD.consultadoSeleccionado);
+                } else if (evento instanceof EventoClicked && evento.getElemento() == null && ((EventoClicked) evento).isDobleClick()) {
+                    insertar(((EventoClicked) evento).getX(), ((EventoClicked) evento).getY());
+                    cambiaEstado(EstadoCRUD.insertando);
                 }
-                break;
+            break;
             case consultadoSeleccionado:
                 if (evento instanceof EventoMouseEntered) {
                     if (evento.getElemento() != elementoSeleccionado) {
@@ -190,7 +197,7 @@ public class CartaEstelarController {
                         highlight(evento.getElemento(), UNSELECTED);
                     }
                 } else if (evento instanceof EventoClicked && evento.getElemento() != null) {
-                    if (((EventoClicked)evento).isDobleClick()) {
+                    if (((EventoClicked) evento).isDobleClick()) {
                         resaltarEditando(elementoSeleccionado, true);
                         cambiaEstado(EstadoCRUD.editando);
                     } else {
@@ -199,6 +206,11 @@ public class CartaEstelarController {
                         elementoSeleccionado = evento.getElemento();
                         cambiaEstado(EstadoCRUD.consultadoSeleccionado);
                     }
+                } else if (evento instanceof EventoClicked && evento.getElemento() == null && ((EventoClicked) evento).isDobleClick()) {
+                    highlight(elementoSeleccionado, UNSELECTED);
+                    EventoClicked ec = (EventoClicked) evento;
+                    insertar(ec.getX(), ec.getY());
+                    cambiaEstado(EstadoCRUD.insertando);
                 } else if (evento instanceof EventoTeclado && ((EventoTeclado) evento).getEventoTeclado().getCode() == KeyCode.ESCAPE
                         || evento instanceof EventoClicked && evento.getElemento() == null) {
                     highlight(elementoSeleccionado, UNSELECTED);
@@ -219,6 +231,17 @@ public class CartaEstelarController {
                 }
                 break;
             case insertando:
+                if (evento instanceof EventoCancelar) {
+                    cambiaEstado(EstadoCRUD.sinSeleccion);
+                    pane.getChildren().remove(elementoInsertando);
+                    elementoInsertando = null;
+                } else if (evento instanceof EventoAceptar) {
+                    Estrella estrella = new Estrella(elementoInsertando.getText(), elementoInsertando.getLayoutX() / ESCALA, elementoInsertando.getLayoutY() / ESCALA);
+                    pane.getChildren().remove(elementoInsertando);
+                    elementoInsertando = null;
+                    modelo.add(estrella);
+                    cambiaEstado(EstadoCRUD.sinSeleccion);
+                }
                 break;
             case editando:
                 if (evento instanceof EventoMoved) {
@@ -236,6 +259,26 @@ public class CartaEstelarController {
                 }
                 break;
         }
+    }
+
+    private void insertar(double x, double y) {
+        elementoInsertando = new TextField();
+        elementoInsertando.setLayoutX(x);
+        elementoInsertando.setLayoutY(y);
+        pane.getChildren().add(elementoInsertando);
+        elementoInsertando.setOnKeyPressed(new EventHandler<KeyEvent>() {
+            @Override
+            public void handle(KeyEvent event) {
+                switch (event.getCode()) {
+                    case ESCAPE:
+                        lanzarEvento(new EventoCancelar());
+                        break;
+                    case ENTER:
+                        lanzarEvento(new EventoAceptar());
+                        break;
+                }
+            }
+        });
     }
 
     private void mover(Text elemento, double x, double y) {
