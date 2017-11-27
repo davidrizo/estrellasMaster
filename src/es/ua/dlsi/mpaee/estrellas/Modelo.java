@@ -79,4 +79,8 @@ class Modelo {
     public void seleccionar(Estrella estrella) {
         notificar(new EventoElementoSeleccionado(estrella));
     }
+
+    public void deseleccionar() {
+        notificar(new EventoElementoSeleccionado(null));
+    }
 }

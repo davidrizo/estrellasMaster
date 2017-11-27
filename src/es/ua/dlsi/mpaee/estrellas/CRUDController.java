@@ -198,8 +198,6 @@ public class CRUDController implements Initializable, INotificable {
         }
     }
 
-
-
     private void deselecciona() {
         if (lvEstrellas.getSelectionModel().getSelectedItem() != null) {
             lvEstrellas.getSelectionModel().clearSelection();
@@ -323,7 +321,11 @@ public class CRUDController implements Initializable, INotificable {
         if (evento instanceof EventoElementoEditado) {
             lvEstrellas.refresh(); // necesario porque no hay binding
         } else if (evento instanceof EventoElementoSeleccionado) {
-            selecciona((Estrella) evento.getElemento());
+            if (evento.getElemento() == null) {
+                deselecciona();
+            } else {
+                selecciona((Estrella) evento.getElemento());
+            }
         }
     }
 }

@@ -153,6 +153,7 @@ public class CartaEstelarController {
         switch (estado) {
             case sinSeleccion:
                 elementoSeleccionado = null;
+                modelo.deseleccionar();
                 break;
             case consultadoSeleccionado:
                 modelo.seleccionar((Estrella)elementoSeleccionado.getUserData());
