@@ -16,7 +16,7 @@ import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
-public class CRUDController implements Initializable {
+public class CRUDController implements Initializable, INotificable {
     @FXML
     ListView<Estrella> lvEstrellas;
 
@@ -75,6 +75,8 @@ public class CRUDController implements Initializable {
     // En el constructor no podemos trabajar con elementos aún no inyectados de la vista
     public CRUDController() {
         modelo = Modelo.getInstance();
+        modelo.suscribir(EventoElementoSeleccionado.class, this);
+        modelo.suscribir(EventoElementoEditado.class, this);
     }
 
     @Override
@@ -176,7 +178,8 @@ public class CRUDController implements Initializable {
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.get() == ButtonType.OK){
-            lvEstrellas.getItems().remove(estrellaEnFormulario);
+            //modelo.borrar(estrellaEnFormulario);
+            //lvEstrellas.getItems().remove(estrellaEnFormulario);
             lanzarEvento(new EventoAceptar());
         } else {
             lanzarEvento(new EventoCancelar());
@@ -285,6 +288,7 @@ public class CRUDController implements Initializable {
                 break;
             case borrando:
                 if (evento instanceof EventoAceptar) {
+                    modelo.borrar(estrellaEnFormulario);
                     cambiaEstado(EstadoCRUD.sinSeleccion);
                 } else if (evento instanceof EventoCancelar) {
                     cambiaEstado(EstadoCRUD.consultadoSeleccionado);
@@ -311,6 +315,15 @@ public class CRUDController implements Initializable {
                     cambiaEstado(EstadoCRUD.consultadoSeleccionado);
                 }
                 break;
+        }
+    }
+
+    @Override
+    public void notificar(Evento<?> evento) {
+        if (evento instanceof EventoElementoEditado) {
+            lvEstrellas.refresh(); // necesario porque no hay binding
+        } else if (evento instanceof EventoElementoSeleccionado) {
+            selecciona((Estrella) evento.getElemento());
         }
     }
 }
