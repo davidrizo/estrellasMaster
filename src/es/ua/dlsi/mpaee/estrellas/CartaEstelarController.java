@@ -293,13 +293,13 @@ public class CartaEstelarController {
 
     private void comandoInsertar() {
         ICommand command = new ICommand() {
-
+            Estrella estrellaDestino;
             @Override
             public void execute(IObservableTaskRunner observer) throws Exception {
-                Estrella estrella = new Estrella(elementoInsertando.getText(), elementoInsertando.getLayoutX() / ESCALA, elementoInsertando.getLayoutY() / ESCALA);
+                estrellaDestino = new Estrella(elementoInsertando.getText(), elementoInsertando.getLayoutX() / ESCALA, elementoInsertando.getLayoutY() / ESCALA);
                 pane.getChildren().remove(elementoInsertando);
                 elementoInsertando = null;
-                modelo.add(estrella);
+                modelo.add(estrellaDestino);
                 cambiaEstado(EstadoCRUD.sinSeleccion);
             }
 
@@ -310,12 +310,12 @@ public class CartaEstelarController {
 
             @Override
             public void undo() throws Exception {
-                //TODO
+                modelo.borrar(estrellaDestino);
             }
 
             @Override
             public void redo() throws Exception {
-                //TODO
+                modelo.add(estrellaDestino);
             }
 
             @Override
