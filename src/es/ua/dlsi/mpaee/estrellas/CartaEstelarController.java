@@ -1,5 +1,8 @@
 package es.ua.dlsi.mpaee.estrellas;
 
+import es.ua.dlsi.im3.gui.command.CommandManager;
+import es.ua.dlsi.im3.gui.command.ICommand;
+import es.ua.dlsi.im3.gui.command.IObservableTaskRunner;
 import es.ua.dlsi.mpaee.estrellas.eventos.*;
 import javafx.collections.ListChangeListener;
 import javafx.event.EventHandler;
@@ -37,9 +40,13 @@ public class CartaEstelarController {
     Estrella estrellaOriginal;
     private TextField elementoInsertando;
 
+    CommandManager commandManager;
+
 
     public CartaEstelarController(Modelo modelo) {
         this.modelo = modelo;
+        commandManager = new CommandManager();
+
         stage = new Stage();
         estadoCRUD = EstadoCRUD.sinSeleccion;
         stage.setMinWidth(Constantes.MAX_COORDENADA_X*ESCALA);
@@ -87,6 +94,19 @@ public class CartaEstelarController {
                         lanzarEvento(new EventoBorrar());
                         event.consume();
                         break;
+                        //TODO Añadir menú para esto
+                    case Z:
+                        if (event.isShortcutDown()) {
+                            deshacer();
+                            event.consume();
+                        }
+                        break;
+                    case Y:
+                        if (event.isShortcutDown()) {
+                            rehacer();
+                            event.consume();
+                        }
+                        break;
                 }
             }
         });
@@ -106,6 +126,24 @@ public class CartaEstelarController {
             }
         });
 
+    }
+
+    private void rehacer() {
+        try {
+            commandManager.redo();
+        } catch (Exception e) {
+            e.printStackTrace();
+            //TODO Mensaje error
+        }
+    }
+
+    private void deshacer() {
+        try {
+            commandManager.undo();
+        } catch (Exception e) {
+            e.printStackTrace();
+            //TODO Mensaje error
+        }
     }
 
     private Text addEstrella(Estrella estrella) {
@@ -223,9 +261,7 @@ public class CartaEstelarController {
                 break;
             case borrando:
                 if (evento instanceof EventoAceptar) {
-                    modelo.borrar((Estrella) elementoSeleccionado.getUserData());
-                    elementoSeleccionado = null;
-                    cambiaEstado(EstadoCRUD.sinSeleccion);
+                    comandoBorrar();
                 } else if (evento instanceof EventoCancelar) {
                     cambiaEstado(EstadoCRUD.consultadoSeleccionado);
                 }
@@ -236,11 +272,7 @@ public class CartaEstelarController {
                     pane.getChildren().remove(elementoInsertando);
                     elementoInsertando = null;
                 } else if (evento instanceof EventoAceptar) {
-                    Estrella estrella = new Estrella(elementoInsertando.getText(), elementoInsertando.getLayoutX() / ESCALA, elementoInsertando.getLayoutY() / ESCALA);
-                    pane.getChildren().remove(elementoInsertando);
-                    elementoInsertando = null;
-                    modelo.add(estrella);
-                    cambiaEstado(EstadoCRUD.sinSeleccion);
+                    comandoInsertar();
                 }
                 break;
             case editando:
@@ -249,15 +281,149 @@ public class CartaEstelarController {
                     mover(elementoSeleccionado, em.getX(), em.getY());
                 } else if (evento instanceof EventoClicked) {
                     // aceptamos - no es necesario lanzar otro evento para guardar
-                    cambiaEstado(EstadoCRUD.consultadoSeleccionado);
-                    modelo.editar((Estrella) elementoSeleccionado.getUserData());
-                    resaltarEditando(elementoSeleccionado, false);
+                    comandoEditar();
                 } else if (evento instanceof EventoTeclado && ((EventoTeclado) evento).getEventoTeclado().getCode() == KeyCode.ESCAPE) {
                     cambiaEstado(EstadoCRUD.consultadoSeleccionado);
                     ((Estrella) elementoSeleccionado.getUserData()).copia(estrellaOriginal);
                     resaltarEditando(elementoSeleccionado, false);
                 }
                 break;
+        }
+    }
+
+    private void comandoInsertar() {
+        ICommand command = new ICommand() {
+
+            @Override
+            public void execute(IObservableTaskRunner observer) throws Exception {
+                Estrella estrella = new Estrella(elementoInsertando.getText(), elementoInsertando.getLayoutX() / ESCALA, elementoInsertando.getLayoutY() / ESCALA);
+                pane.getChildren().remove(elementoInsertando);
+                elementoInsertando = null;
+                modelo.add(estrella);
+                cambiaEstado(EstadoCRUD.sinSeleccion);
+            }
+
+            @Override
+            public boolean canBeUndone() {
+                return true;
+            }
+
+            @Override
+            public void undo() throws Exception {
+                //TODO
+            }
+
+            @Override
+            public void redo() throws Exception {
+                //TODO
+            }
+
+            @Override
+            public String getEventName() {
+                return "Insertar";
+            }
+        };
+        try {
+            commandManager.executeCommand(command);
+        } catch (Exception e) {
+            e.printStackTrace();
+            //TODO
+        }
+    }
+
+    private void comandoEditar() {
+        ICommand command = new ICommand() {
+            // Debemos usar estos datos que se apilan, no podemos usar los del controller directamente
+            // porque pueden haber inserciones / borrados
+            Estrella estrellaDestino;
+            Estrella contenidoSinEditar;
+            Estrella contenidoEditado;
+            @Override
+            public void execute(IObservableTaskRunner observer) throws Exception {
+                resaltarEditando(elementoSeleccionado, false);
+                estrellaDestino = (Estrella) elementoSeleccionado.getUserData();
+                contenidoSinEditar = new Estrella(estrellaOriginal);
+                contenidoEditado = new Estrella(estrellaDestino);
+                cambiaEstado(EstadoCRUD.consultadoSeleccionado);
+                modelo.editar(estrellaDestino);
+            }
+
+            @Override
+            public boolean canBeUndone() {
+                return true;
+            }
+
+            @Override
+            public void undo() throws Exception {
+                estrellaDestino.copia(contenidoSinEditar);
+                modelo.editar(estrellaDestino);
+            }
+
+            @Override
+            public void redo() throws Exception {
+                estrellaDestino.copia(contenidoEditado);
+                modelo.editar(estrellaDestino);
+            }
+
+            @Override
+            public String getEventName() {
+                return "Editar";
+            }
+        };
+        try {
+            commandManager.executeCommand(command);
+        } catch (Exception e) {
+            e.printStackTrace();
+            //TODO
+        }
+    }
+
+    private void comandoBorrar() {
+        // No estamos teniendo a propósito en cuenta el orden en que se mostrarán en la lista de CRUDController
+        ICommand command = new ICommand() {
+            // Debemos usar estos datos que se apilan, no podemos usar los del controller directamente
+            // porque pueden haber inserciones / borrados
+            Estrella estrellaDestino;
+            Text vistaSeleccionada;
+
+            @Override
+            public void execute(IObservableTaskRunner observer) throws Exception {
+                vistaSeleccionada = elementoSeleccionado;
+                estrellaDestino = (Estrella) elementoSeleccionado.getUserData();
+                doBorrar();
+            }
+
+            private void doBorrar() {
+                modelo.borrar(estrellaDestino);
+                elementoSeleccionado = null;
+                cambiaEstado(EstadoCRUD.sinSeleccion);
+            }
+
+            @Override
+            public boolean canBeUndone() {
+                return true;
+            }
+
+            @Override
+            public void undo() throws Exception {
+                modelo.add(estrellaDestino); // esto desencadena la inserción en esta vista
+            }
+
+            @Override
+            public void redo() throws Exception {
+                doBorrar();
+            }
+
+            @Override
+            public String getEventName() {
+                return "Borrar";
+            }
+        };
+        try {
+            commandManager.executeCommand(command);
+        } catch (Exception e) {
+            e.printStackTrace();
+            //TODO Mensaje error
         }
     }
 

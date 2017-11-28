@@ -73,7 +73,9 @@ class Modelo {
     }
 
     public void borrar(Estrella estrella) {
-        estrellas.remove(estrella);
+        if (!estrellas.remove(estrella)) {
+            System.err.println("(La estrella a borrar: (" + estrella + ") no existía"); //TODO Cambiar por logger
+        }
     }
 
     public void seleccionar(Estrella estrella) {
