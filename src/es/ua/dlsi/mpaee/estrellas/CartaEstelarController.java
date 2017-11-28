@@ -1,5 +1,6 @@
 package es.ua.dlsi.mpaee.estrellas;
 
+import es.ua.dlsi.im3.gui.ShowError;
 import es.ua.dlsi.im3.gui.command.CommandManager;
 import es.ua.dlsi.im3.gui.command.ICommand;
 import es.ua.dlsi.im3.gui.command.IObservableTaskRunner;
@@ -15,35 +16,38 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 import java.util.HashMap;
 import java.util.Optional;
 
+/**
+ * Sólo permitimos insertar manualmente estrellas. El resto de cuerpos celestes los insertará el sistema
+ */
 public class CartaEstelarController {
     //TODO Lo podemos hacer con un slider
     private static final double ESCALA = 0.5;
-    private static final Color HOVER = Color.MAROON;
-    private static final Color SELECTED = Color.RED;
-    private static final Color UNSELECTED = Color.BLACK;
+    protected static final Color HOVER = Color.MAROON;
+    protected static final Color SELECTED = Color.RED;
+    protected static final Color UNSELECTED = Color.BLACK;
+
 
     private final Pane pane;
     Stage stage;
-    HashMap<Estrella, Text> estrellas;
+    HashMap<CuerpoCeleste, CuerpoCelesteView<?>> cuerpoCelestes;
     EstadoCRUD estadoCRUD;
-    private Text elementoSeleccionado;
+    private CuerpoCelesteView<?> elementoSeleccionado;
     final Modelo modelo;
     /**
      * Lo usaremos más adelante con el patrón Comando
      */
-    Estrella estrellaOriginal;
+    CuerpoCeleste cuerpoCelesteOriginal;
     private TextField elementoInsertando;
 
     CommandManager commandManager;
 
 
-    public CartaEstelarController(Modelo modelo) {
+    public CartaEstelarController(Modelo modelo) throws Exception {
         this.modelo = modelo;
         commandManager = new CommandManager();
 
@@ -56,14 +60,14 @@ public class CartaEstelarController {
         stage.setScene(scene);
         stage.show();
 
-        estrellas = new HashMap<>();
-        for (Estrella estrella: modelo.estrellasProperty()) {
-            addEstrella(estrella);
+        cuerpoCelestes = new HashMap<>();
+        for (CuerpoCeleste cuerpoCeleste: modelo.cuerpoCelestesProperty()) {
+            addCuerpoCeleste(cuerpoCeleste);
         }
 
-        modelo.estrellasProperty().addListener(new ListChangeListener<Estrella>() {
+        modelo.cuerpoCelestesProperty().addListener(new ListChangeListener<CuerpoCeleste>() {
             @Override
-            public void onChanged(Change<? extends Estrella> c) {
+            public void onChanged(Change<? extends CuerpoCeleste> c) {
                 while (c.next()) {
                     if (c.wasPermutated()) {
                         /*for (int i = c.getFrom(); i < c.getTo(); ++i) {
@@ -72,11 +76,17 @@ public class CartaEstelarController {
                     } else if (c.wasUpdated()) {
                         //update item - no lo necesitamos de momento porque lo tenemos todo con binding, si no podríamos actualizar aquí
                     } else {
-                        for (Estrella remitem : c.getRemoved()) {
-                            pane.getChildren().remove(estrellas.get(remitem));
+                        for (CuerpoCeleste remitem : c.getRemoved()) {
+                            CuerpoCelesteView<?> cuerpoCelesteView = cuerpoCelestes.get(remitem);
+                            pane.getChildren().remove(cuerpoCelesteView.getRoot());
                         }
-                        for (Estrella additem : c.getAddedSubList()) {
-                            addEstrella(additem);
+                        for (CuerpoCeleste additem : c.getAddedSubList()) {
+                            try {
+                                addCuerpoCeleste(additem);
+                            } catch (Exception e) {
+                                //TODO Log
+                                throw new RuntimeException(e);
+                            }
                         }
                     }
                 }
@@ -132,8 +142,7 @@ public class CartaEstelarController {
         try {
             commandManager.redo();
         } catch (Exception e) {
-            e.printStackTrace();
-            //TODO Mensaje error
+            ShowError.show(stage, "No se puede rehacer", e);
         }
     }
 
@@ -141,48 +150,44 @@ public class CartaEstelarController {
         try {
             commandManager.undo();
         } catch (Exception e) {
-            e.printStackTrace();
-            //TODO Mensaje error
+            ShowError.show(stage, "No se puede deshacer", e);
         }
     }
 
-    private Text addEstrella(Estrella estrella) {
-        Text text = new Text();
-        text.setUserData(estrella);
-        text.textProperty().bind(estrella.nombreProperty());
-        text.xProperty().bind(estrella.xProperty().multiply(ESCALA));
-        text.yProperty().bind(estrella.yProperty().multiply(ESCALA));
-        estrellas.put(estrella, text);
-        pane.getChildren().add(text);
+    private CuerpoCelesteView addCuerpoCeleste(CuerpoCeleste cuerpoCeleste) throws Exception {
+        CuerpoCelesteView cuerpoCelesteView = CuerpoCelesteViewFactory.getInstance().create(cuerpoCeleste);
+        cuerpoCelesteView.escalaProperty().set(ESCALA); // la escala podría ser un slider / zoom
+        cuerpoCelestes.put(cuerpoCeleste, cuerpoCelesteView);
+        pane.getChildren().add(cuerpoCelesteView.getRoot());
 
         // interacción
-        text.setOnMouseEntered(new EventHandler<MouseEvent>() {
+        cuerpoCelesteView.getRoot().setOnMouseEntered(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event) {
-                lanzarEvento(new EventoMouseEntered(text));
+                lanzarEvento(new EventoMouseEntered(cuerpoCelesteView));
             }
         });
-        text.setOnMouseExited(new EventHandler<MouseEvent>() {
+        cuerpoCelesteView.getRoot().setOnMouseExited(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event) {
-                lanzarEvento(new EventoMouseExited(text));
+                lanzarEvento(new EventoMouseExited(cuerpoCelesteView));
             }
         });
-        text.setOnMouseClicked(new EventHandler<MouseEvent>() {
+        cuerpoCelesteView.getRoot().setOnMouseClicked(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event) {
-                lanzarEvento(new EventoClicked(text, event.isAltDown(), event.getClickCount() == 2, event.getX(), event.getY()));
+                lanzarEvento(new EventoClicked(cuerpoCelesteView, event.isAltDown(), event.getClickCount() == 2, event.getX(), event.getY()));
                 event.consume(); // para que no pase el evento también al panel
             }
         });
-        text.setOnMouseMoved(new EventHandler<MouseEvent>() {
+        cuerpoCelesteView.getRoot().setOnMouseMoved(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event) {
-                lanzarEvento(new EventoMoved(text, event.getX(), event.getY()));
+                lanzarEvento(new EventoMoved(cuerpoCelesteView, event.getX(), event.getY()));
                 event.consume();
             }
         });
-        return text;
+        return cuerpoCelesteView;
     }
 
     public void show() {
@@ -197,19 +202,18 @@ public class CartaEstelarController {
                 modelo.deseleccionar();
                 break;
             case consultadoSeleccionado:
-                modelo.seleccionar((Estrella)elementoSeleccionado.getUserData());
+                modelo.seleccionar(elementoSeleccionado.getCuerpoCeleste());
                 break;
             case insertando:
-
                 break;
             case editando:
-                estrellaOriginal = new Estrella((Estrella) elementoSeleccionado.getUserData());
+                cuerpoCelesteOriginal = elementoSeleccionado.getCuerpoCeleste().clone();
                 break;
         }
         this.estadoCRUD = estado;
     }
 
-    public void lanzarEvento(Evento<Text> evento) {
+    public void lanzarEvento(Evento<CuerpoCelesteView<?>> evento) {
         switch (this.estadoCRUD) {
             case sinSeleccion:
                 if (evento instanceof EventoMouseEntered) {
@@ -284,7 +288,7 @@ public class CartaEstelarController {
                     comandoEditar();
                 } else if (evento instanceof EventoTeclado && ((EventoTeclado) evento).getEventoTeclado().getCode() == KeyCode.ESCAPE) {
                     cambiaEstado(EstadoCRUD.consultadoSeleccionado);
-                    ((Estrella) elementoSeleccionado.getUserData()).copia(estrellaOriginal);
+                    elementoSeleccionado.getCuerpoCeleste().copia(cuerpoCelesteOriginal);
                     resaltarEditando(elementoSeleccionado, false);
                 }
                 break;
@@ -293,13 +297,13 @@ public class CartaEstelarController {
 
     private void comandoInsertar() {
         ICommand command = new ICommand() {
-            Estrella estrellaDestino;
+            CuerpoCeleste cuerpoCelesteDestino;
             @Override
             public void execute(IObservableTaskRunner observer) throws Exception {
-                estrellaDestino = new Estrella(elementoInsertando.getText(), elementoInsertando.getLayoutX() / ESCALA, elementoInsertando.getLayoutY() / ESCALA);
+                cuerpoCelesteDestino = new Estrella(elementoInsertando.getText(), elementoInsertando.getLayoutX() / ESCALA, elementoInsertando.getLayoutY() / ESCALA);
                 pane.getChildren().remove(elementoInsertando);
                 elementoInsertando = null;
-                modelo.add(estrellaDestino);
+                modelo.add(cuerpoCelesteDestino);
                 cambiaEstado(EstadoCRUD.sinSeleccion);
             }
 
@@ -310,12 +314,12 @@ public class CartaEstelarController {
 
             @Override
             public void undo() throws Exception {
-                modelo.borrar(estrellaDestino);
+                modelo.borrar(cuerpoCelesteDestino);
             }
 
             @Override
             public void redo() throws Exception {
-                modelo.add(estrellaDestino);
+                modelo.add(cuerpoCelesteDestino);
             }
 
             @Override
@@ -326,8 +330,7 @@ public class CartaEstelarController {
         try {
             commandManager.executeCommand(command);
         } catch (Exception e) {
-            e.printStackTrace();
-            //TODO
+            ShowError.show(stage, "No se puede insertar", e);
         }
     }
 
@@ -335,17 +338,17 @@ public class CartaEstelarController {
         ICommand command = new ICommand() {
             // Debemos usar estos datos que se apilan, no podemos usar los del controller directamente
             // porque pueden haber inserciones / borrados
-            Estrella estrellaDestino;
-            Estrella contenidoSinEditar;
-            Estrella contenidoEditado;
+            CuerpoCeleste cuerpoCelesteDestino;
+            CuerpoCeleste contenidoSinEditar;
+            CuerpoCeleste contenidoEditado;
             @Override
             public void execute(IObservableTaskRunner observer) throws Exception {
                 resaltarEditando(elementoSeleccionado, false);
-                estrellaDestino = (Estrella) elementoSeleccionado.getUserData();
-                contenidoSinEditar = new Estrella(estrellaOriginal);
-                contenidoEditado = new Estrella(estrellaDestino);
+                cuerpoCelesteDestino = elementoSeleccionado.getCuerpoCeleste();
+                contenidoSinEditar = cuerpoCelesteOriginal.clone();
+                contenidoEditado = cuerpoCelesteDestino.clone();
                 cambiaEstado(EstadoCRUD.consultadoSeleccionado);
-                modelo.editar(estrellaDestino);
+                modelo.editar(cuerpoCelesteDestino);
             }
 
             @Override
@@ -355,14 +358,14 @@ public class CartaEstelarController {
 
             @Override
             public void undo() throws Exception {
-                estrellaDestino.copia(contenidoSinEditar);
-                modelo.editar(estrellaDestino);
+                cuerpoCelesteDestino.copia(contenidoSinEditar);
+                modelo.editar(cuerpoCelesteDestino);
             }
 
             @Override
             public void redo() throws Exception {
-                estrellaDestino.copia(contenidoEditado);
-                modelo.editar(estrellaDestino);
+                cuerpoCelesteDestino.copia(contenidoEditado);
+                modelo.editar(cuerpoCelesteDestino);
             }
 
             @Override
@@ -373,8 +376,7 @@ public class CartaEstelarController {
         try {
             commandManager.executeCommand(command);
         } catch (Exception e) {
-            e.printStackTrace();
-            //TODO
+            ShowError.show(stage, "No se puede editar", e);
         }
     }
 
@@ -383,18 +385,18 @@ public class CartaEstelarController {
         ICommand command = new ICommand() {
             // Debemos usar estos datos que se apilan, no podemos usar los del controller directamente
             // porque pueden haber inserciones / borrados
-            Estrella estrellaDestino;
-            Text vistaSeleccionada;
+            CuerpoCeleste cuerpoCelesteDestino;
+            CuerpoCelesteView vistaSeleccionada;
 
             @Override
             public void execute(IObservableTaskRunner observer) throws Exception {
                 vistaSeleccionada = elementoSeleccionado;
-                estrellaDestino = (Estrella) elementoSeleccionado.getUserData();
+                cuerpoCelesteDestino = elementoSeleccionado.getCuerpoCeleste();
                 doBorrar();
             }
 
             private void doBorrar() {
-                modelo.borrar(estrellaDestino);
+                modelo.borrar(cuerpoCelesteDestino);
                 elementoSeleccionado = null;
                 cambiaEstado(EstadoCRUD.sinSeleccion);
             }
@@ -406,7 +408,7 @@ public class CartaEstelarController {
 
             @Override
             public void undo() throws Exception {
-                modelo.add(estrellaDestino); // esto desencadena la inserción en esta vista
+                modelo.add(cuerpoCelesteDestino); // esto desencadena la inserción en esta vista
             }
 
             @Override
@@ -422,8 +424,7 @@ public class CartaEstelarController {
         try {
             commandManager.executeCommand(command);
         } catch (Exception e) {
-            e.printStackTrace();
-            //TODO Mensaje error
+            ShowError.show(stage, "No se puede borrar", e);
         }
     }
 
@@ -447,28 +448,22 @@ public class CartaEstelarController {
         });
     }
 
-    private void mover(Text elemento, double x, double y) {
-        Estrella estrella = (Estrella) elemento.getUserData();
-        estrella.setX(x/ESCALA);
-        estrella.setY(y/ESCALA);
+    private void mover(CuerpoCelesteView elemento, double x, double y) {
+        CuerpoCeleste cuerpoCeleste = elemento.getCuerpoCeleste();
+        cuerpoCeleste.setX(x/ESCALA);
+        cuerpoCeleste.setY(y/ESCALA);
     }
 
-    private void resaltarEditando(Text elemento, boolean resaltar) {
-        if (resaltar) {
-            // se pinta también el borde resaltándolo más
-            elemento.strokeProperty().bind(elemento.fillProperty());
-        } else {
-            elemento.strokeProperty().unbind();
-            elemento.strokeProperty().set(Color.TRANSPARENT);
-        }
+    private void resaltarEditando(CuerpoCelesteView elemento, boolean resaltar) {
+        elemento.resaltar(resaltar);
     }
 
     private void borrar() {
         // véase http://code.makery.ch/blog/javafx-dialogs-official/ para el resto de diálogos
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Estrellas");
+        alert.setTitle("cuerpoCelestes");
         alert.setHeaderText("Confirmación");
-        alert.setContentText("¿Deseas borrar la estrella " + elementoSeleccionado.getUserData() + "?");
+        alert.setContentText("¿Deseas borrar la cuerpoCeleste " + elementoSeleccionado.getCuerpoCeleste() + "?");
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.get() == ButtonType.OK){
@@ -479,7 +474,7 @@ public class CartaEstelarController {
 
     }
 
-    private void highlight(Text elemento, Color color) {
-        elemento.setFill(color);
+    private void highlight(CuerpoCelesteView elemento, Color color) {
+        elemento.highlight(color);
     }
 }

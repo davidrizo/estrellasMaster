@@ -1,10 +1,10 @@
 package es.ua.dlsi.mpaee.estrellas.eventos;
 
-import es.ua.dlsi.mpaee.estrellas.Estrella;
+import es.ua.dlsi.mpaee.estrellas.CuerpoCeleste;
 import es.ua.dlsi.mpaee.estrellas.Evento;
 
-public class EventoValorCambiado extends Evento<Estrella> {
-    public EventoValorCambiado(Estrella estrella) {
+public class EventoValorCambiado extends Evento<CuerpoCeleste> {
+    public EventoValorCambiado(CuerpoCeleste estrella) {
         super(estrella);
     }
 }

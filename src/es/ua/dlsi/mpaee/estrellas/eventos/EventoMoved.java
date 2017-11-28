@@ -1,14 +1,15 @@
 package es.ua.dlsi.mpaee.estrellas.eventos;
 
+import es.ua.dlsi.mpaee.estrellas.CuerpoCelesteView;
 import es.ua.dlsi.mpaee.estrellas.Evento;
 import javafx.scene.text.Text;
 
-public class EventoMoved extends Evento<Text> {
+public class EventoMoved extends Evento<CuerpoCelesteView<?>> {
     private final double x;
     private final double y;
 
-    public EventoMoved(Text text, double x, double y) {
-        super(text);
+    public EventoMoved(CuerpoCelesteView<?> vista, double x, double y) {
+        super(vista);
         this.x = x;
         this.y = y;
     }

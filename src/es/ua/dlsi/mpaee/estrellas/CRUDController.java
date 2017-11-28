@@ -16,9 +16,12 @@ import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
+/**
+ * Sólo permitimos insertar manualmente estrellas. El resto de cuerpos celestes los insertará el sistema
+ */
 public class CRUDController implements Initializable, INotificable {
     @FXML
-    ListView<Estrella> lvEstrellas;
+    ListView<CuerpoCeleste> lvEstrellas;
 
     @FXML
     Button btnBorrar;
@@ -56,20 +59,20 @@ public class CRUDController implements Initializable, INotificable {
     @FXML
     GridPane formulario;
 
-    Estrella estrellaEnFormulario;
+    CuerpoCeleste estrellaEnFormulario;
 
     final Modelo modelo;
 
     /**
      * Lo usaremos más adelante con el patrón Comando
      */
-    Estrella estrellaOriginal;
+    CuerpoCeleste estrellaOriginal;
 
     /**
      * Estado de la vista (aún muy simple)
      */
     EstadoCRUD estadoCRUD;
-    private Estrella ultimoElementoSeleccionado;
+    private CuerpoCeleste ultimoElementoSeleccionado;
 
 
     // En el constructor no podemos trabajar con elementos aún no inyectados de la vista
@@ -94,7 +97,7 @@ public class CRUDController implements Initializable, INotificable {
         cambiaEstado(EstadoCRUD.sinSeleccion);
 
         // bindings
-        lvEstrellas.itemsProperty().bind(modelo.estrellasProperty()); // no bidireccional para que se centralice en modelo
+        lvEstrellas.itemsProperty().bind(modelo.cuerpoCelestesProperty()); // no bidireccional para que se centralice en modelo
 
         // formatos en https://docs.oracle.com/javase/8/docs/api/java/util/Formatter.html
         String formato = "%+.1f";
@@ -104,9 +107,9 @@ public class CRUDController implements Initializable, INotificable {
         // interacción
         estrellaEnFormulario = null;
 
-        lvEstrellas.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Estrella>() {
+        lvEstrellas.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<CuerpoCeleste>() {
             @Override
-            public void changed(ObservableValue<? extends Estrella> observable, Estrella oldValue, Estrella newValue) {
+            public void changed(ObservableValue<? extends CuerpoCeleste> observable, CuerpoCeleste oldValue, CuerpoCeleste newValue) {
                 if (newValue == null) {
                     lanzarEvento(new EventoElementoDeseleccionado());
                 } else {
@@ -135,7 +138,7 @@ public class CRUDController implements Initializable, INotificable {
         });
     }
 
-    private void cargaEstrella(Estrella estrella) {
+    private void cargaEstrella(CuerpoCeleste estrella) {
 
         if (estrellaEnFormulario != null) {
             estrellaEnFormulario.nombreProperty().unbindBidirectional(inputNombre.textProperty());
@@ -204,7 +207,7 @@ public class CRUDController implements Initializable, INotificable {
         }
     }
 
-    private void selecciona(Estrella estrella) {
+    private void selecciona(CuerpoCeleste estrella) {
         lvEstrellas.getSelectionModel().select(estrella);
     }
 
@@ -251,7 +254,7 @@ public class CRUDController implements Initializable, INotificable {
                 cargaEstrella(new Estrella());
                 break;
             case editando:
-                estrellaOriginal = new Estrella(estrellaEnFormulario);
+                estrellaOriginal = estrellaEnFormulario.clone();
                 habilitarPanelConsulta(false);
                 habilitarBotonesGuardarCancelar(true);
                 habilitarPanelConsulta(false);
@@ -260,7 +263,7 @@ public class CRUDController implements Initializable, INotificable {
         this.estadoCRUD = estado;
     }
 
-    public void lanzarEvento(Evento<Estrella> evento) {
+    public void lanzarEvento(Evento<CuerpoCeleste> evento) {
         switch (this.estadoCRUD) {
             case sinSeleccion:
                 if (evento instanceof EventoElementoSeleccionado) {
@@ -294,7 +297,7 @@ public class CRUDController implements Initializable, INotificable {
                 break;
             case insertando:
                 if (evento instanceof EventoGuardar) {
-                    Estrella elementoInsertando = estrellaEnFormulario;
+                    CuerpoCeleste elementoInsertando = estrellaEnFormulario;
                     modelo.add(elementoInsertando);
                     cambiaEstado(EstadoCRUD.sinSeleccion);
                     selecciona(elementoInsertando); // esto lanzará el evento de selección
@@ -324,7 +327,7 @@ public class CRUDController implements Initializable, INotificable {
             if (evento.getElemento() == null) {
                 deselecciona();
             } else {
-                selecciona((Estrella) evento.getElemento());
+                selecciona((CuerpoCeleste) evento.getElemento());
             }
         }
     }

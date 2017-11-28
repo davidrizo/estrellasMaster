@@ -1,7 +1,7 @@
 package es.ua.dlsi.mpaee.estrellas.eventos;
 
-import es.ua.dlsi.mpaee.estrellas.Estrella;
+import es.ua.dlsi.mpaee.estrellas.CuerpoCeleste;
 import es.ua.dlsi.mpaee.estrellas.Evento;
 
-public class EventoInsertar extends Evento<Estrella> {
+public class EventoInsertar extends Evento<CuerpoCeleste> {
 }

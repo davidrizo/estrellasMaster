@@ -5,6 +5,7 @@ import es.ua.dlsi.mpaee.estrellas.eventos.EventoElementoSeleccionado;
 import javafx.beans.property.ListProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
+import javafx.scene.paint.Color;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -13,21 +14,23 @@ import java.util.List;
 
 class Modelo {
     public static Modelo instance = null;
-    private ListProperty<Estrella> estrellas;
+    private ListProperty<CuerpoCeleste> cuerpoCelestes;
     private HashMap<Class<? extends Evento>, List<INotificable>> colasNotificaciones;
 
     private Modelo() {
         colasNotificaciones = new HashMap<>();
-        // https://es.wikipedia.org/wiki/Anexo:Estrellas
+        // https://es.wikipedia.org/wiki/Anexo:cuerpoCelestes
         // https://es.wikipedia.org/wiki/Osa_Mayor#/media/File:Osamayor.png
-        estrellas = new SimpleListProperty<>(FXCollections.observableArrayList(
+        cuerpoCelestes = new SimpleListProperty<>(FXCollections.observableArrayList(
                 new Estrella("Benetnasch", 143, 401),
                 new Estrella("Mizar", 288, 286),
                 new Estrella("Alioth", 406, 286),
                 new Estrella("Megreth", 545, 273),
                 new Estrella("Pechda", 629, 363),
                 new Estrella("Merak", 815, 266),
-                new Estrella("Dubhe", 780, 122)
+                new Estrella("Dubhe", 780, 122),
+                new Planeta("Tierra", 500, 500, 0, 0, 1),
+                new Planeta("Marte", 200, 700, 1, 0, 0)
                 ));
     }
 
@@ -40,17 +43,17 @@ class Modelo {
         return instance;
     }
 
-    public ListProperty<Estrella> estrellasProperty() {
-        return estrellas;
+    public ListProperty<CuerpoCeleste> cuerpoCelestesProperty() {
+        return cuerpoCelestes;
     }
 
-    public void add(Estrella estrella) {
-        estrellas.add(estrella);
+    public void add(CuerpoCeleste cuerpoCeleste) {
+        cuerpoCelestes.add(cuerpoCeleste);
     }
 
-    public void editar(Estrella estrella) {
+    public void editar(CuerpoCeleste cuerpoCeleste) {
         // no hacemos nada más porque no aún no es persistente
-        notificar(new EventoElementoEditado(estrella));
+        notificar(new EventoElementoEditado(cuerpoCeleste));
     }
 
     private void notificar(Evento evento) {
@@ -72,14 +75,14 @@ class Modelo {
         suscripciones.add(notificable);
     }
 
-    public void borrar(Estrella estrella) {
-        if (!estrellas.remove(estrella)) {
-            System.err.println("(La estrella a borrar: (" + estrella + ") no existía"); //TODO Cambiar por logger
+    public void borrar(CuerpoCeleste cuerpoCeleste) {
+        if (!cuerpoCelestes.remove(cuerpoCeleste)) {
+            System.err.println("(La cuerpoCeleste a borrar: (" + cuerpoCeleste + ") no existía"); //TODO Cambiar por logger
         }
     }
 
-    public void seleccionar(Estrella estrella) {
-        notificar(new EventoElementoSeleccionado(estrella));
+    public void seleccionar(CuerpoCeleste cuerpoCeleste) {
+        notificar(new EventoElementoSeleccionado(cuerpoCeleste));
     }
 
     public void deseleccionar() {
