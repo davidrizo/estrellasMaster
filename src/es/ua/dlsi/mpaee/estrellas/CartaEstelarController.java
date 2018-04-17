@@ -6,14 +6,14 @@ import es.ua.dlsi.im3.gui.command.ICommand;
 import es.ua.dlsi.im3.gui.command.IObservableTaskRunner;
 import es.ua.dlsi.mpaee.estrellas.eventos.*;
 import javafx.collections.ListChangeListener;
+import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
@@ -31,8 +31,9 @@ public class CartaEstelarController {
     protected static final Color SELECTED = Color.RED;
     protected static final Color UNSELECTED = Color.BLACK;
 
-
+    private final BorderPane root;
     private final Pane pane;
+    private final ToolBar toolBar;
     Stage stage;
     HashMap<CuerpoCeleste, CuerpoCelesteView<?>> cuerpoCelestes;
     EstadoCRUD estadoCRUD;
@@ -55,8 +56,13 @@ public class CartaEstelarController {
         estadoCRUD = EstadoCRUD.sinSeleccion;
         stage.setMinWidth(Constantes.MAX_COORDENADA_X*ESCALA);
         stage.setMinHeight(Constantes.MAX_COORDENADA_Y*ESCALA);
+        root = new BorderPane();
         pane = new Pane();
-        Scene scene = new Scene(pane);
+        toolBar = new ToolBar();
+        fillToolBar();
+        root.setCenter(pane);
+        root.setTop(toolBar);
+        Scene scene = new Scene(root);
         stage.setScene(scene);
         stage.show();
 
@@ -136,6 +142,34 @@ public class CartaEstelarController {
             }
         });
 
+    }
+
+    private void fillToolBar() {
+        Button undo = new Button("Deshacer");
+        undo.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                try {
+                    commandManager.undo();
+                } catch (Exception e) {
+                    ShowError.show(stage, "No se puede deshacer", e);
+                }
+            }
+        });
+
+        toolBar.getItems().add(undo);
+
+        Button redo = new Button("Rehacer");
+        undo.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                try {
+                    commandManager.undo();
+                } catch (Exception e) {
+                    ShowError.show(stage, "No se puede deshacer", e);
+                }
+            }
+        });
     }
 
     private void rehacer() {
